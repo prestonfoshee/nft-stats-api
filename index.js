@@ -6,24 +6,27 @@ puppeteer.use(StealthPlugin());
 (async () => {
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
-    await page.goto('https://opensea.io/collection/cosmodinos-alpha');
+    await page.goto('https://opensea.io/collection/boredapeyachtclub');
 
-    const socialLinks = await page.$$('.styles__StyledLink-sc-l6elh8-0.ekTmzq.Blockreact__Block-sc-1xf18x6-0.Buttonreact__StyledButton-sc-glfma3-0.bhqEJb.kdWcfm.ButtonGroupreact__StyledButton-sc-1skvztv-0.eztnHW');
+    const linkTags = await page.$$('.styles__StyledLink-sc-l6elh8-0.ekTmzq.Blockreact__Block-sc-1xf18x6-0.Buttonreact__StyledButton-sc-glfma3-0.bhqEJb.kdWcfm.ButtonGroupreact__StyledButton-sc-1skvztv-0.eztnHW');
+    const socialLinks = [];
 
-    const linksList = [];
-
-    for (let i = 0; i < socialLinks.length; i++) {
-        const link = await (await socialLinks[i]
+    for (let i = 0; i < linkTags.length; i++) {
+        const link = await (await linkTags[i]
         .getProperty('href')).
         jsonValue();
-        linksList.push(link);
+        socialLinks.push(link);
     };
 
-    console.log(linksList);
+    const collectionImage = await page.evaluate(() => {
+        const srcs = Array.from(
+          document.querySelectorAll('.Image--image')
+        ).map((image) => image.getAttribute('src'));
+        return srcs[1];
+  });
 
-    // const collectionImage = await page.evaluate(() => {
-
-    // });
+    console.log('Social links:', socialLinks);
+    console.log('Collection Image:', collectionImage);
 
     await browser.close();
 })();
