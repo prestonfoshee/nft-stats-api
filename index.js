@@ -1,38 +1,34 @@
-const axios = require('axios')
-const cheerio = require('cheerio')
-const express = require('express')
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 
-async function getData() {
-    try {
-        const url = 'https://opensea.io/collection/cool-cats-nft'
-        const { data } = await axios.get(url)
-        const $ = cheerio.load(data)
+puppeteer.use(StealthPlugin());
 
-        const linkSelector = '#main > div > div > div.CollectionHeaderreact__DivContainer-sc-1woywpk-0.leOEIG > div.Blockreact__Block-sc-1xf18x6-0.Flexreact__Flex-sc-1twd32i-0.hZGRPw.jYqxGr > div.Blockreact__Block-sc-1xf18x6-0.Flexreact__Flex-sc-1twd32i-0.FlexEndreact__FlexEnd-sc-rss0by-0.lmazUR.jYqxGr.eEhtsU > div.fresnel-container.fresnel-greaterThanOrEqual-md > div > div > a'
-        const statsSelector = '#main > div > div > div.CollectionHeaderreact__DivContainer-sc-1woywpk-0.leOEIG > div.Blockreact__Block-sc-1xf18x6-0.Flexreact__Flex-sc-1twd32i-0.hZGRPw.jYqxGr > div.Blockreact__Block-sc-1xf18x6-0.karjuF > div.Blockreact__Block-sc-1xf18x6-0.Flexreact__Flex-sc-1twd32i-0.InfoContainerreact__InfoContainer-sc-15x3z7c-0.CollectionStatsBarreact__Container-sc-8gdi9o-0.dBFmez.jYqxGr.fprnFG.cWlCaZ > div'
-        
-        // const keys = [
-        //     'items',
-        //     'owners',
-        //     'floor',
-        //     'volume',
-        // ]
-    
-        $(statsSelector).each((i, el) => {
-                $(el).children().each((i, el) => {
-                        console.log($(el).text())
-                })
-        })
+(async () => {
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    await page.goto('https://opensea.io/collection/cosmodinos-alpha');
 
-    } catch(err) {
-        console.log(err);
-    }
-}
+    const socialLinks = await page.$$('.styles__StyledLink-sc-l6elh8-0.ekTmzq.Blockreact__Block-sc-1xf18x6-0.Buttonreact__StyledButton-sc-glfma3-0.bhqEJb.kdWcfm.ButtonGroupreact__StyledButton-sc-1skvztv-0.eztnHW');
 
-getData()
+    const linksList = [];
 
-// https://opensea.io/collection/cosmodinos-alpha
-// main link selector: #main > div > div > div.CollectionHeaderreact__DivContainer-sc-1woywpk-0.leOEIG > div.Blockreact__Block-sc-1xf18x6-0.Flexreact__Flex-sc-1twd32i-0.hZGRPw.jYqxGr > div.Blockreact__Block-sc-1xf18x6-0.Flexreact__Flex-sc-1twd32i-0.FlexEndreact__FlexEnd-sc-rss0by-0.lmazUR.jYqxGr.eEhtsU > div.fresnel-container.fresnel-greaterThanOrEqual-md > div > div > a
+    for (let i = 0; i < socialLinks.length; i++) {
+        const link = await (await socialLinks[i]
+        .getProperty('href')).
+        jsonValue();
+        linksList.push(link);
+    };
+
+    console.log(linksList);
+
+    // const collectionImage = await page.evaluate(() => {
+
+    // });
+
+    await browser.close();
+})();
+
+
 
 // todo:
 // 1. get url for social links
