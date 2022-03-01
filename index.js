@@ -1,39 +1,100 @@
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import express from 'express';
 
 puppeteer.use(StealthPlugin());
 
-(async () => {
-    const browser = await puppeteer.launch();
+async function getStats(collectionSlug) {
+    const browser = await puppeteer.launch({
+      headless: true,
+      defaultViewport:false
+    });
     const page = await browser.newPage();
-    await page.goto('https://opensea.io/collection/boredapeyachtclub');
+    await page.goto(`https://opensea.io/collection/${collectionSlug}`, { waitUntil: 'networkidle2' });
+    
+    const statsArr = [];
 
-    const linkTags = await page.$$('.styles__StyledLink-sc-l6elh8-0.ekTmzq.Blockreact__Block-sc-1xf18x6-0.Buttonreact__StyledButton-sc-glfma3-0.bhqEJb.kdWcfm.ButtonGroupreact__StyledButton-sc-1skvztv-0.eztnHW');
-    const socialLinks = [];
+    const socials = await page.evaluate(() => {
+      const links = [];
+      const ariaLabels = [
+        "Website-link",
+        "Discord-link",
+        "Twitter-link",
+        "Medium-link",
+        "Instagram-link",
+      ];
 
-    for (let i = 0; i < linkTags.length; i++) {
-        const link = await (await linkTags[i]
-        .getProperty('href')).
-        jsonValue();
-        socialLinks.push(link);
-    };
+      // to make dynamic object with correct key, use for loop that tests
+      // each item against its index in the ariaLabels array to check if null
+      // if != null, assign item to correct key
 
+      ariaLabels.forEach((item) => {
+        if (document.querySelector((`a[aria-label=${item}]`)) != null) {
+          const presentLinks = document.querySelector(`a[aria-label=${item}]`).href;
+          links.push(presentLinks);
+        }
+      });
+      return links;
+    });
+    
     const collectionImage = await page.evaluate(() => {
-        const srcs = Array.from(
+      const srcs = Array.from(
           document.querySelectorAll('.Image--image')
         ).map((image) => image.getAttribute('src'));
         return srcs[1];
-  });
+      });
 
-    console.log('Social links:', socialLinks);
-    console.log('Collection Image:', collectionImage);
+    const priceStats = await page.evaluate(() => {
+      const textValues = Array.from(
+        document.querySelectorAll('div[tabindex="-1"]')
+      ).map((element) => element.innerText);
+      const stats = textValues.slice(1, 5);
+      return stats;
+    });
 
+    const traits = await page.evaluate(() => {
+      const textValues = Array.from(
+        document.querySelectorAll('.Blockreact__Block-sc-1xf18x6-0 .cICWtp')
+      ).map((element) => element.innerText);
+      return textValues;
+    });
+
+    const description = await page.evaluate(() => {
+      const text = document.querySelector('.CollectionHeader--description').innerText;
+      return text;
+    });
+
+    const statsObj = {
+      socials: socials,
+      collectionImage: collectionImage,
+      priceStats: priceStats,
+      traits: traits,
+      description: description,
+    };
+    statsArr.push(statsObj);
+    
     await browser.close();
-})();
+    return statsArr;
+};
 
+const app = express();
 
+app.get('/nft-stats/:collection', async (req, res) => {
+  try {
+    const collectionName = req.params.collection;
+    const nftStats = await getStats(collectionName);
 
-// todo:
-// 1. get url for social links
-// 2. make data availabel for users
-// 3. 
+    return res.status(200).json({
+      result: nftStats,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      err: err.toString(),
+    });
+  }
+});
+
+app.listen(3000, () => {
+  console.log('server running on port 3000');
+});
+
